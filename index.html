@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7047311187553663"
+    crossorigin="anonymous"></script>
+    <meta name="google-adsense-account" content="ca-pub-7047311187553663"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>정밀 VO2Max 분석기</title>
+    <style>
+        :root {
+            --primary: #2D3436;
+            --accent: #0984E3;
+            --success: #00B894;
+            --bg: #DFE6E9;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 20px;
+        }
+
+        .card {
+            background: white; width: 100%; max-width: 450px;
+            padding: 2.5rem; border-radius: 24px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h1 { font-size: 1.6rem; margin: 0; color: var(--accent); }
+        .header p { font-size: 0.9rem; color: #636E72; margin-top: 5px; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full { grid-column: span 2; }
+
+        label { display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; color: #2D3436; }
+        input, select {
+            width: 100%; padding: 12px; border: 2px solid #F1F2F6;
+            border-radius: 12px; font-size: 1rem; box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--accent); }
+
+        .time-box { display: flex; gap: 8px; }
+
+        button {
+            width: 100%; padding: 16px; background: var(--accent);
+            color: white; border: none; border-radius: 12px;
+            font-size: 1.1rem; font-weight: 800; cursor: pointer;
+            margin-top: 25px; transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+
+        #result {
+            display: none; margin-top: 2rem; padding: 20px;
+            border-radius: 16px; background: #F8F9FA; text-align: center;
+            border: 2px solid #F1F2F6;
+        }
+
+        .score { font-size: 3.5rem; font-weight: 900; color: var(--accent); line-height: 1; }
+        .tier { 
+            display: inline-block; margin: 15px 0; padding: 6px 16px;
+            border-radius: 50px; color: white; font-weight: 700; font-size: 0.9rem;
+        }
+        .desc { font-size: 0.95rem; line-height: 1.6; color: #636E72; word-break: keep-all; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h1>🏃‍♂️ VO2Max 정밀 분석</h1>
+        <p>러닝 데이터 기반 심폐지구력 측정</p>
+    </div>
+
+    <div class="form-grid">
+        <div>
+            <label>성별</label>
+            <select id="gender">
+                <option value="male">남성</option>
+                <option value="female">여성</option>
+            </select>
+        </div>
+        <div>
+            <label>만 나이</label>
+            <input type="number" id="age" placeholder="30">
+        </div>
+        
+        <div class="full">
+            <label>달린 거리 (km)</label>
+            <input type="number" id="dist" step="0.01" placeholder="예: 5.0">
+        </div>
+
+        <div class="full">
+            <label>소요 시간 (분/초)</label>
+            <div class="time-box">
+                <input type="number" id="min" placeholder="분">
+                <input type="number" id="sec" placeholder="초">
+            </div>
+        </div>
+
+        <div class="full">
+            <label>운동 중 평균 심박수 (BPM)</label>
+            <input type="number" id="hrAvg" placeholder="예: 158">
+        </div>
+    </div>
+
+    <button onclick="runAnalysis()">분석 결과 보기</button>
+
+    <div id="result">
+        <div style="font-size: 0.8rem; font-weight: 600; color: #B2BEC3;">추정 VO2MAX 수치</div>
+        <div class="score" id="vo2Val">0.0</div>
+        <div id="tierTag" class="tier">등급</div>
+        <p class="desc" id="tierDesc"></p>
+    </div>
+</div>
+
+<script>
+function runAnalysis() {
+    const gender = document.getElementById('gender').value;
+    const age = parseInt(document.getElementById('age').value);
+    const dist = parseFloat(document.getElementById('dist').value);
+    const min = parseInt(document.getElementById('min').value || 0);
+    const sec = parseInt(document.getElementById('sec').value || 0);
+    const hrAvg = parseInt(document.getElementById('hrAvg').value);
+
+    if(!age || !dist || !hrAvg || (min + sec === 0)) {
+        alert("데이터를 모두 입력해 주세요!"); return;
+    }
+
+    // 1. 최대 심박수 추정 (Tanaka 공식)
+    const hrMax = 208 - (0.7 * age);
+    
+    // 2. 속도 계산 (m/min)
+    const totalMinutes = min + (sec / 60);
+    const velocity = (dist * 1000) / totalMinutes;
+
+    // 3. ACSM 러닝 대사 산식 적용
+    // VO2 = (0.2 * velocity) + 3.5 (수평 러닝 기준)
+    const baseVo2 = (0.2 * velocity) + 3.5;
+
+    // 4. 심박수 기반 보정 (HR Index 방식)
+    // 자신의 최대 심박수 대비 현재 심박수의 비율을 사용하여 산소 섭취 효율 반영
+    // 공식: VO2max = VO2_test * ( (HRmax - 61) / (HRavg - 61) ) 
+    // 여기서는 보편적인 강도 보정 계수 적용
+    let finalVo2 = baseVo2 * (hrMax / hrAvg);
+
+    // 성별 보정 (생리학적 골격 및 혈액량 차이)
+    if(gender === 'female') finalVo2 *= 0.95;
+
+    const resultVo2 = Math.round(finalVo2 * 10) / 10;
+
+    // UI 출력
+    document.getElementById('vo2Val').innerText = resultVo2;
+    updateTier(resultVo2, age, gender);
+    document.getElementById('result').style.display = 'block';
+}
+
+function updateTier(vo2, age, gender) {
+    const tag = document.getElementById('tierTag');
+    const desc = document.getElementById('tierDesc');
+    
+    // 연령별/성별 기준점 (Cooper Institute 데이터 기반 보정)
+    let ref = (gender === 'male') ? 42 : 35;
+    if(age > 35) ref -= (age - 35) * 0.4;
+
+    if(vo2 > ref + 15) {
+        tag.innerText = "⚡️ 압도적인 챌린저";
+        tag.style.background = "#6C5CE7";
+        desc.innerText = "상위 1%의 심폐지구력입니다. 당신의 심장은 지칠 줄 모르는 고성능 엔진 같군요!";
+    } else if(vo2 > ref + 5) {
+        tag.innerText = "🔥 에너제틱 러너";
+        tag.style.background = "#0984E3";
+        desc.innerText = "매우 우수한 체력입니다. 효율적인 러닝 페이스와 심박 조절 능력을 갖추고 계시네요.";
+    } else if(vo2 > ref - 5) {
+        tag.innerText = "🏃 건강한 시민";
+        tag.style.background = "#00B894";
+        desc.innerText = "운동을 즐기기에 딱 좋은 평균 이상의 체력입니다. 꾸준함이 당신의 가장 큰 자산입니다.";
+    } else {
+        tag.innerText = "🌱 잠재력 꿈나무";
+        tag.style.background = "#636E72";
+        desc.innerText = "심폐 엔진이 이제 막 예열을 시작했습니다. 꾸준한 유산소 운동으로 충분히 수치를 올릴 수 있어요!";
+    }
+}
+</script>
+</body>
+</html>
